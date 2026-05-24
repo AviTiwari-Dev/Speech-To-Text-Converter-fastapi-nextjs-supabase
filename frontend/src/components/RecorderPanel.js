@@ -1,15 +1,69 @@
 "use client";
+import axios from "axios";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export default function RecorderPanel() {
   const [isRecording, setIsRecording] = useState(false);
+  const [audioURL, setAudioURL] = useState("");
 
-  function startRecording() {
-    setIsRecording(true);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+
+      const mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorderRef.current = mediaRecorder;
+
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/webm",
+        });
+
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        setAudioURL(audioUrl);
+
+        const formData = new FormData();
+
+        formData.append("file", audioBlob, "recording.webm");
+
+        try {
+          const response = await axios.post(
+            "http://127.0.0.1:8000/transcribe",
+            formData,
+          );
+
+          console.log(response.data);
+        } catch (error) {
+          console.error("Upload failed:", error);
+        }
+      };
+
+      mediaRecorder.start();
+
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Microphone access denied:", error);
+    }
   }
 
   function stopRecording() {
+    mediaRecorderRef.current.stop();
+
     setIsRecording(false);
   }
 
@@ -20,14 +74,16 @@ export default function RecorderPanel() {
       <div className="flex gap-4">
         <button
           onClick={startRecording}
-          className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl"
+          disabled={isRecording}
+          className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl disabled:bg-gray-400"
         >
           Start Recording
         </button>
 
         <button
           onClick={stopRecording}
-          className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl"
+          disabled={!isRecording}
+          className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl disabled:bg-gray-400"
         >
           Stop Recording
         </button>
@@ -45,6 +101,20 @@ export default function RecorderPanel() {
           </span>
         </p>
       </div>
+
+      {audioURL && (
+        <div className="mt-6">
+          <audio controls src={audioURL} className="w-full" />
+
+          <a
+            href={audioURL}
+            download="recording.webm"
+            className="inline-block mt-4 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-xl"
+          >
+            Download Audio
+          </a>
+        </div>
+      )}
     </div>
   );
 }
