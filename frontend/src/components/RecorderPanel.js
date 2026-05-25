@@ -1,14 +1,21 @@
 "use client";
+
 import axios from "axios";
 
 import { useRef, useState } from "react";
 
+import { useTranscript } from "@/context/TranscriptContext";
+
 export default function RecorderPanel() {
   const [isRecording, setIsRecording] = useState(false);
+
   const [audioURL, setAudioURL] = useState("");
 
   const mediaRecorderRef = useRef(null);
+
   const audioChunksRef = useRef([]);
+
+  const { setTranscript } = useTranscript();
 
   async function startRecording() {
     try {
@@ -47,7 +54,7 @@ export default function RecorderPanel() {
             formData,
           );
 
-          console.log(response.data);
+          setTranscript(response.data.transcript);
         } catch (error) {
           console.error("Upload failed:", error);
         }
@@ -57,7 +64,9 @@ export default function RecorderPanel() {
 
       setIsRecording(true);
     } catch (error) {
-      console.error("Microphone access denied:", error);
+      console.error(error);
+
+      alert("Microphone permission denied");
     }
   }
 
@@ -105,14 +114,6 @@ export default function RecorderPanel() {
       {audioURL && (
         <div className="mt-6">
           <audio controls src={audioURL} className="w-full" />
-
-          <a
-            href={audioURL}
-            download="recording.webm"
-            className="inline-block mt-4 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-xl"
-          >
-            Download Audio
-          </a>
         </div>
       )}
     </div>
