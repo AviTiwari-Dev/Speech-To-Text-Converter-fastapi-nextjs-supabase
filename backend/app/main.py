@@ -6,7 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from dotenv import load_dotenv
 
+from app.services.audio_service import convert_audio
 from app.services.deepgram_service import transcribe_audio
+from fastapi import WebSocket
 
 import os
 
@@ -36,14 +38,33 @@ def home():
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...)):
 
+    MAX_FILE_SIZE = 10 * 1024 * 1024
+
+    content = await file.read()
+
+    if len(content) > MAX_FILE_SIZE:
+
+        return {"status": "error", "message": "File too large"}
+
     file_path = os.path.join(UPLOAD_DIR, file.filename)
 
     with open(file_path, "wb") as buffer:
-
-        content = await file.read()
-
         buffer.write(content)
 
-    transcript = transcribe_audio(file_path)
+    converted_path = convert_audio(file_path)
+
+    transcript = transcribe_audio(converted_path)
 
     return {"status": "success", "transcript": transcript}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+
+    await websocket.accept()
+
+    while True:
+
+        data = await websocket.receive_text()
+
+        await websocket.send_text(f"Live Transcript: {data}")

@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import RecorderPanel from "@/components/RecorderPanel";
 import TranscriptPanel from "@/components/TranscriptPanel";
+import LiveTranscript from "@/components/LiveTranscript";
 
 export default function HomePage() {
   return (
@@ -11,6 +12,7 @@ export default function HomePage() {
         <RecorderPanel />
 
         <TranscriptPanel />
+        <LiveTranscript />
       </div>
     </main>
   );

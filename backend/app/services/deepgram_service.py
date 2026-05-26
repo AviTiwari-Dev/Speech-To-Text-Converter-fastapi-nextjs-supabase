@@ -8,10 +8,7 @@ def transcribe_audio(file_path):
 
     api_key = os.getenv("DEEPGRAM_API_KEY")
 
-    headers = {
-        "Authorization": f"Token {api_key}",
-        "Content-Type": "audio/webm",
-    }
+    headers = {"Authorization": f"Token {api_key}", "Content-Type": "audio/wav"}
 
     with open(file_path, "rb") as audio:
 
