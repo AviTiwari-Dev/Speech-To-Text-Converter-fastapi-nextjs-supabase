@@ -2,6 +2,8 @@
 
 import axios from "axios";
 
+import RecordRTC from "recordrtc";
+
 import { useRef, useState } from "react";
 
 import { useTranscript } from "@/context/TranscriptContext";
@@ -11,56 +13,48 @@ export default function RecorderPanel() {
 
   const [audioURL, setAudioURL] = useState("");
 
-  const mediaRecorderRef = useRef(null);
+  const recorderRef = useRef(null);
 
-  const audioChunksRef = useRef([]);
+  const socketRef = useRef(null);
 
-  const { setTranscript } = useTranscript();
+  const streamRef = useRef(null);
+
+  const { transcript, setTranscript } = useTranscript();
 
   async function startRecording() {
     try {
+      const RecordRTC = (await import("recordrtc")).default;
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
 
-      const mediaRecorder = new MediaRecorder(stream);
+      streamRef.current = stream;
 
-      mediaRecorderRef.current = mediaRecorder;
+      const socket = new WebSocket("ws://127.0.0.1:8000/listen");
 
-      audioChunksRef.current = [];
+      socketRef.current = socket;
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+      socket.onmessage = (event) => {
+        setTranscript(event.data);
       };
 
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
+      const recorder = new RecordRTC(stream, {
+        type: "audio",
+        mimeType: "audio/webm",
 
-        const audioUrl = URL.createObjectURL(audioBlob);
+        timeSlice: 1000,
 
-        setAudioURL(audioUrl);
+        ondataavailable: async (blob) => {
+          if (socket.readyState === 1) {
+            socket.send(blob);
+          }
+        },
+      });
 
-        const formData = new FormData();
+      recorderRef.current = recorder;
 
-        formData.append("file", audioBlob, "recording.webm");
-
-        try {
-          const response = await axios.post(
-            "http://127.0.0.1:8000/transcribe",
-            formData,
-          );
-
-          setTranscript(response.data.transcript);
-        } catch (error) {
-          console.error("Upload failed:", error);
-        }
-      };
-
-      mediaRecorder.start();
+      recorder.startRecording();
 
       setIsRecording(true);
     } catch (error) {
@@ -70,8 +64,18 @@ export default function RecorderPanel() {
     }
   }
 
-  function stopRecording() {
-    mediaRecorderRef.current.stop();
+  async function stopRecording() {
+    recorderRef.current.stopRecording(() => {
+      const audioBlob = recorderRef.current.getBlob();
+
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      setAudioURL(audioUrl);
+
+      socketRef.current?.close();
+
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    });
 
     setIsRecording(false);
   }
@@ -84,7 +88,15 @@ export default function RecorderPanel() {
         <button
           onClick={startRecording}
           disabled={isRecording}
-          className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl disabled:bg-gray-400"
+          className="
+            bg-green-500
+            hover:bg-green-600
+            text-white
+            px-6
+            py-3
+            rounded-xl
+            disabled:bg-gray-400
+          "
         >
           Start Recording
         </button>
@@ -92,7 +104,15 @@ export default function RecorderPanel() {
         <button
           onClick={stopRecording}
           disabled={!isRecording}
-          className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl disabled:bg-gray-400"
+          className="
+            bg-red-500
+            hover:bg-red-600
+            text-white
+            px-6
+            py-3
+            rounded-xl
+            disabled:bg-gray-400
+          "
         >
           Stop Recording
         </button>
@@ -116,6 +136,23 @@ export default function RecorderPanel() {
           <audio controls src={audioURL} className="w-full" />
         </div>
       )}
+
+      <div className="mt-8">
+        <h2 className="text-2xl font-semibold mb-4">Live Transcript</h2>
+
+        <div
+          className="
+          bg-gray-100
+          rounded-xl
+          p-4
+          min-h-[150px]
+        "
+        >
+          {transcript || (
+            <p className="text-gray-400">Live transcript appears here...</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

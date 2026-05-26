@@ -6,8 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from dotenv import load_dotenv
 
-from app.services.audio_service import convert_audio
 from app.services.deepgram_service import transcribe_audio
+from app.services.deepgram_live import start_deepgram
 from fastapi import WebSocket
 
 import os
@@ -51,9 +51,7 @@ async def transcribe(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         buffer.write(content)
 
-    converted_path = convert_audio(file_path)
-
-    transcript = transcribe_audio(converted_path)
+    transcript = transcribe_audio(file_path)
 
     return {"status": "success", "transcript": transcript}
 
@@ -68,3 +66,11 @@ async def websocket_endpoint(websocket: WebSocket):
         data = await websocket.receive_text()
 
         await websocket.send_text(f"Live Transcript: {data}")
+
+
+@app.websocket("/listen")
+async def websocket_endpoint(websocket: WebSocket):
+
+    await websocket.accept()
+
+    await start_deepgram(websocket)
