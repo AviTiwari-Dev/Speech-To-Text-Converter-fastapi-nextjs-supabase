@@ -1,4 +1,4 @@
-export function getTempUserId() {
+export function user?.id {
   /*
   -------------------------
   CHECK EXISTING USER

@@ -1,5 +1,5 @@
 "use client";
-import { getTempUserId } from "@/utils/tempUser";
+import { useAuth } from "@/context/AuthContext";
 import { createContext, useContext, useEffect, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
@@ -8,6 +8,7 @@ const ChatContext = createContext();
 
 export function ChatProvider({ children }) {
   const [chats, setChats] = useState([]);
+  const { user } = useAuth();
 
   const [activeChat, setActiveChat] = useState(null);
 
@@ -18,10 +19,19 @@ export function ChatProvider({ children }) {
   */
 
   useEffect(() => {
-    loadChats();
-  }, []);
+    if (user) {
+      loadChats();
+    }
+  }, [user]);
 
   async function loadChats() {
+    /*
+    -------------------------
+    NO USER
+    -------------------------
+    */
+
+    if (!user) return;
     /*
     -------------------------
     FETCH CHATS
@@ -31,7 +41,7 @@ export function ChatProvider({ children }) {
     const { data: chatsData } = await supabase
       .from("chats")
       .select("*")
-      .eq("user_id", getTempUserId())
+      .eq("user_id", user?.id)
       .order("id", {
         ascending: false,
       });
@@ -45,7 +55,7 @@ export function ChatProvider({ children }) {
     const { data: messagesData } = await supabase
       .from("messages")
       .select("*")
-      .eq("user_id", getTempUserId());
+      .eq("user_id", user?.id);
 
     /*
     -------------------------
@@ -78,7 +88,7 @@ export function ChatProvider({ children }) {
 
       title: `Chat ${chats.length + 1}`,
 
-      user_id: getTempUserId(),
+      user_id: user?.id,
 
       messages: [],
     };
@@ -155,7 +165,7 @@ export function ChatProvider({ children }) {
 
         chat_id: activeChat.id,
 
-        user_id: getTempUserId(),
+        user_id: user?.id,
       },
     ]);
   }

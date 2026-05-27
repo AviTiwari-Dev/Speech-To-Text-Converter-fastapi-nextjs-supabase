@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import { useRouter } from "next/navigation";
 
 import { useState } from "react";
@@ -15,6 +16,23 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
 
   const [password, setPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin(e) {
+    e.preventDefault();
+
+    setLoading(true);
+
+    const success = await login(email, password);
+
+    setLoading(false);
+
+    if (success) {
+      router.push("/");
+    }
+  }
+
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-sm border p-8">
@@ -22,25 +40,14 @@ export default function LoginPage() {
 
         <p className="text-gray-500 mb-8">Login to continue</p>
 
-        <form
-          className="space-y-5"
-          onSubmit={(e) => {
-            e.preventDefault();
-
-            login({
-              name: email.split("@")[0],
-              email,
-            });
-
-            router.push("/");
-          }}
-        >
+        <form className="space-y-5" onSubmit={handleLogin}>
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full border rounded-2xl px-4 py-3 outline-none"
+            required
           />
 
           <input
@@ -49,13 +56,15 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full border rounded-2xl px-4 py-3 outline-none"
+            required
           />
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-2xl font-semibold"
+            disabled={loading}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-2xl font-semibold disabled:opacity-50"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 

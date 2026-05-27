@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { getTempUserId } from "@/utils/tempUser";
-
 import { useChat } from "@/context/ChatContext";
 
 import { useAuth } from "@/context/AuthContext";
@@ -169,7 +167,7 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
 
             formData.append("file", audioBlob, "audio.webm");
 
-            formData.append("user_id", getTempUserId());
+            formData.append("user_id", user?.id);
 
             formData.append("chat_id", currentChat.id);
 

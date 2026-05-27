@@ -7,32 +7,120 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
+  const [loading, setLoading] = useState(true);
 
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-  }, []);
-
-  function login(data) {
-    setUser(data);
-
-    localStorage.setItem("user", JSON.stringify(data));
-  }
-
-  function logout() {
-    localStorage.removeItem("user");
-
-    setUser(null);
-
-    /*
+  /*
   -------------------------
-  CLEAR CHATS
+  LOAD SESSION
   -------------------------
   */
 
-    localStorage.removeItem("chats");
+  useEffect(() => {
+    const savedSession = localStorage.getItem("session");
+
+    if (savedSession) {
+      const parsed = JSON.parse(savedSession);
+
+      setUser(parsed.user);
+    }
+
+    setLoading(false);
+  }, []);
+
+  /*
+  -------------------------
+  LOGIN
+  -------------------------
+  */
+
+  async function login(email, password) {
+    try {
+      const response = await fetch("http://localhost:8000/login", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        alert(data.error);
+
+        return false;
+      }
+
+      /*
+      -------------------------
+      SAVE SESSION
+      -------------------------
+      */
+
+      localStorage.setItem("session", JSON.stringify(data.session));
+
+      setUser(data.user);
+
+      return true;
+    } catch (error) {
+      console.error(error);
+
+      return false;
+    }
+  }
+
+  /*
+  -------------------------
+  SIGNUP
+  -------------------------
+  */
+
+  async function signup(email, password) {
+    try {
+      const response = await fetch("http://localhost:8000/signup", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        alert(data.error);
+
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error(error);
+
+      return false;
+    }
+  }
+
+  /*
+  -------------------------
+  LOGOUT
+  -------------------------
+  */
+
+  function logout() {
+    localStorage.removeItem("session");
+
+    setUser(null);
 
     window.location.href = "/";
   }
@@ -41,7 +129,10 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
+        loading,
+
         login,
+        signup,
         logout,
       }}
     >
