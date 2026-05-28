@@ -28,6 +28,7 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
   const messageIdRef = useRef(null);
 
   const transcriptRef = useRef("");
+
   const [recording, setRecording] = useState(false);
 
   const currentChat =
@@ -39,15 +40,16 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
     });
   }, [currentChat]);
 
-  async function startRecording() {
-    /*
-    -------------------------
-    OPTIONAL LOGIN CHECK
-    -------------------------
-    */
+  /*
+  -------------------------
+  START RECORDING
+  -------------------------
+  */
 
+  async function startRecording() {
     if (!user) {
       alert("Please login first");
+
       return;
     }
 
@@ -88,6 +90,8 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
         const messageId = Date.now();
 
         messageIdRef.current = messageId;
+
+        transcriptRef.current = "";
 
         const newMessage = {
           id: messageId,
@@ -142,26 +146,20 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
         mediaRecorder.onstop = async () => {
           try {
             /*
-              -------------------------
-              CREATE AUDIO BLOB
-              -------------------------
-              */
+            -------------------------
+            CREATE AUDIO BLOB
+            -------------------------
+            */
 
             const audioBlob = new Blob(audioChunks, {
               type: "audio/webm",
             });
 
             /*
-              -------------------------
-              GET FINAL TRANSCRIPT
-              -------------------------
-              */
-
-            /*
-              -------------------------
-              FORM DATA
-              -------------------------
-              */
+            -------------------------
+            FORM DATA
+            -------------------------
+            */
 
             const formData = new FormData();
 
@@ -176,10 +174,10 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
             formData.append("transcript", transcriptRef.current);
 
             /*
-              -------------------------
-              UPLOAD TO BACKEND
-              -------------------------
-              */
+            -------------------------
+            UPLOAD TO BACKEND
+            -------------------------
+            */
 
             const response = await fetch("http://localhost:8000/upload-audio", {
               method: "POST",
@@ -189,13 +187,11 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
 
             const data = await response.json();
 
-            console.log(data);
-
             /*
-              -------------------------
-              UPDATE UI
-              -------------------------
-              */
+            -------------------------
+            UPDATE UI
+            -------------------------
+            */
 
             setChats((prevChats) =>
               prevChats.map((chat) => {
@@ -306,6 +302,12 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
     }
   }
 
+  /*
+  -------------------------
+  AUDIO CONVERSION
+  -------------------------
+  */
+
   function convertFloat32ToInt16(buffer) {
     let l = buffer.length;
 
@@ -317,6 +319,66 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
 
     return buf.buffer;
   }
+
+  /*
+  -------------------------
+  COPY TRANSCRIPT
+  -------------------------
+  */
+
+  async function copyTranscript(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+
+      alert("Transcript copied");
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  /*
+  -------------------------
+  DOWNLOAD TRANSCRIPT
+  -------------------------
+  */
+
+  function downloadTranscript() {
+    if (!currentChat) {
+      return;
+    }
+
+    const transcriptText = currentChat.messages
+      .map((message, index) => {
+        return `Message ${index + 1}\n\n${message.text}`;
+      })
+      .join("\n\n-------------------------\n\n");
+
+    const blob = new Blob([transcriptText], {
+      type: "text/plain",
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+
+    link.download = `${currentChat.title}.txt`;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }
+
+  /*
+  -------------------------
+  STOP RECORDING
+  -------------------------
+  */
 
   function stopRecording() {
     websocketRef.current?.close();
@@ -333,6 +395,12 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
 
     setRecording(false);
   }
+
+  /*
+  -------------------------
+  EMPTY STATE
+  -------------------------
+  */
 
   if (!currentChat) {
     return (
@@ -374,21 +442,78 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
         ${showSidebar ? "hidden md:flex" : "flex"}
       `}
     >
-      <div className="p-5 border-b bg-white flex items-center">
-        <button
-          onClick={() => setShowSidebar(true)}
-          className="md:hidden text-2xl mr-4"
-        >
-          ←
-        </button>
+      {/* HEADER */}
 
-        <h2 className="text-2xl font-bold">{currentChat.title}</h2>
+      <div className="p-5 border-b bg-white flex items-center justify-between">
+        <div className="flex items-center">
+          <button
+            onClick={() => setShowSidebar(true)}
+            className="md:hidden text-2xl mr-4"
+          >
+            ←
+          </button>
+
+          <h2 className="text-2xl font-bold">{currentChat.title}</h2>
+        </div>
+
+        <button
+          onClick={downloadTranscript}
+          className="
+            bg-indigo-600
+            hover:bg-indigo-700
+            text-white
+            px-4
+            py-2
+            rounded-xl
+            text-sm
+            font-medium
+          "
+        >
+          Download
+        </button>
       </div>
+
+      {/* MESSAGES */}
 
       <div className="flex-1 overflow-y-auto p-5 space-y-8">
         {currentChat.messages.map((message) => (
           <div key={message.id} className="flex flex-col gap-3">
-            <div className="self-start max-w-[75%] bg-white rounded-3xl px-5 py-4 border shadow-sm">
+            {/* TRANSCRIPT */}
+
+            <div
+              className="
+                self-start
+                max-w-[75%]
+                bg-white
+                rounded-3xl
+                px-5
+                py-4
+                border
+                shadow-sm
+                relative
+                group
+              "
+            >
+              <button
+                onClick={() => copyTranscript(message.text)}
+                className="
+                  absolute
+                  top-3
+                  right-3
+                  opacity-0
+                  group-hover:opacity-100
+                  transition
+                  bg-gray-100
+                  hover:bg-gray-200
+                  text-sm
+                  px-3
+                  py-1
+                  rounded-lg
+                "
+              >
+                Copy
+              </button>
+
               <div className="text-[16px] leading-8 whitespace-pre-wrap">
                 {message.text}
 
@@ -399,6 +524,8 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
                 )}
               </div>
             </div>
+
+            {/* AUDIO */}
 
             {(message.live || message.audio) && (
               <div className="self-end bg-indigo-600 rounded-2xl p-3 shadow-sm">
@@ -422,6 +549,8 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
 
         <div ref={scrollRef} />
       </div>
+
+      {/* FOOTER */}
 
       <div className="p-5 border-t bg-white">
         <button
