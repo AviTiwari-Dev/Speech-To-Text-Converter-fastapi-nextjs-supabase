@@ -16,15 +16,23 @@ export function AuthProvider({ children }) {
   */
 
   useEffect(() => {
-    const savedSession = localStorage.getItem("session");
+    try {
+      const savedSession = localStorage.getItem("session");
 
-    if (savedSession) {
-      const parsed = JSON.parse(savedSession);
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
 
-      setUser(parsed.user);
+        if (parsed?.user) {
+          setUser(parsed.user);
+        }
+      }
+    } catch (error) {
+      console.error("SESSION LOAD ERROR:", error);
+
+      localStorage.removeItem("session");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, []);
 
   /*
@@ -35,7 +43,15 @@ export function AuthProvider({ children }) {
 
   async function login(email, password) {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+      if (!API_URL) {
+        alert("API URL missing");
+
+        return false;
+      }
+
+      const response = await fetch(`${API_URL}/login`, {
         method: "POST",
 
         headers: {
@@ -48,7 +64,37 @@ export function AuthProvider({ children }) {
         }),
       });
 
+      /*
+      -------------------------
+      HANDLE NON-JSON ERRORS
+      -------------------------
+      */
+
+      const contentType = response.headers.get("content-type");
+
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+
+        console.error("NON JSON RESPONSE:", text);
+
+        alert("Server error");
+
+        return false;
+      }
+
       const data = await response.json();
+
+      /*
+      -------------------------
+      HANDLE API ERRORS
+      -------------------------
+      */
+
+      if (!response.ok) {
+        alert(data.error || "Login failed");
+
+        return false;
+      }
 
       if (data.error) {
         alert(data.error);
@@ -62,13 +108,21 @@ export function AuthProvider({ children }) {
       -------------------------
       */
 
-      localStorage.setItem("session", JSON.stringify(data.session));
+      localStorage.setItem(
+        "session",
+        JSON.stringify({
+          user: data.user,
+          session: data.session,
+        }),
+      );
 
       setUser(data.user);
 
       return true;
     } catch (error) {
-      console.error(error);
+      console.error("LOGIN ERROR:", error);
+
+      alert("Unable to connect to server");
 
       return false;
     }
@@ -82,23 +136,58 @@ export function AuthProvider({ children }) {
 
   async function signup(email, password) {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/signup`,
-        {
-          method: "POST",
+      const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-          headers: {
-            "Content-Type": "application/json",
-          },
+      if (!API_URL) {
+        alert("API URL missing");
 
-          body: JSON.stringify({
-            email,
-            password,
-          }),
+        return false;
+      }
+
+      const response = await fetch(`${API_URL}/signup`, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      /*
+      -------------------------
+      HANDLE NON-JSON ERRORS
+      -------------------------
+      */
+
+      const contentType = response.headers.get("content-type");
+
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+
+        console.error("NON JSON RESPONSE:", text);
+
+        alert("Server error");
+
+        return false;
+      }
 
       const data = await response.json();
+
+      /*
+      -------------------------
+      HANDLE API ERRORS
+      -------------------------
+      */
+
+      if (!response.ok) {
+        alert(data.error || "Signup failed");
+
+        return false;
+      }
 
       if (data.error) {
         alert(data.error);
@@ -108,7 +197,9 @@ export function AuthProvider({ children }) {
 
       return true;
     } catch (error) {
-      console.error(error);
+      console.error("SIGNUP ERROR:", error);
+
+      alert("Unable to connect to server");
 
       return false;
     }
