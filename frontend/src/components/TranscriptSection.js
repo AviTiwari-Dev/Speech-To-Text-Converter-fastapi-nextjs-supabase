@@ -64,7 +64,7 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
       -------------------------
       */
 
-      const ws = new WebSocket("ws://localhost:8000/listen");
+      const ws = new WebSocket(`${process.env.NEXT_PUBLIC_API_URL_WS}/listen`);
 
       websocketRef.current = ws;
 
@@ -179,11 +179,14 @@ export default function TranscriptSection({ showSidebar, setShowSidebar }) {
             -------------------------
             */
 
-            const response = await fetch("http://localhost:8000/upload-audio", {
-              method: "POST",
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/upload-audio`,
+              {
+                method: "POST",
 
-              body: formData,
-            });
+                body: formData,
+              },
+            );
 
             const data = await response.json();
 
