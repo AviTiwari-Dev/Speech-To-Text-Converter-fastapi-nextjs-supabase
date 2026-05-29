@@ -1,0 +1,26 @@
+
+
+
+
+Audio
+
+    Change audio volume
+    Play pause audio
+    Forward backward audio
+    Download audio
+    Control playback speed
+
+Chats
+
+    Add chats
+    Delete chats
+
+Use websockets for live transcription and low latency, low throughput
+Store chats in database along with transcripts and audio recordings
+Login Signup signout functionality
+Session maintained when logged in
+Used external api integration in backend Deepgram API for STT conversion
+Used Vercel for frontend deployment and render for backend deployment
+Used fastapi for async backend
+Used Next Js and tailwind css for creating frontend
+
